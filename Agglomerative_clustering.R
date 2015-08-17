@@ -8,17 +8,22 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
   n <- nrow(x); p <- ncol(x); min_np <- min(n, p)
   
   if (normalise) x <- scale(x)
+  # Sigma will contain all canonical correlations
   Sigma <- abs(cor(x))
   diag(Sigma) <- -1  
   
   iter <- 1
   cor_max <- max(Sigma)
   which_cor_max <- which(Sigma == cor_max, arr.ind = TRUE)
+  # Records pair with highest correlation
   group_pair <- as.integer(which_cor_max[1, ])
   max_group_size <- 1
   cur_groups <- 1:p
   distinct_groups <- 1:p
+  # Records group membership at each iteration
   groups <- matrix(cur_groups, max_iter, p, byrow = TRUE)
+  # Records rho hat max as a function of iterations
+  # in order to select optimal clustering later
   cors <- c(cor_max, rep(0, max_iter-1))
   
   repeat {
@@ -26,14 +31,18 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
       print(iter)
     }
     iter <- iter + 1
+    # Identifies which group will be grouped
     group1 <- which(cur_groups == group_pair[1])
     group2 <- which(cur_groups == group_pair[2])
     new_group_indices <- c(group1, group2)
+    # Redefine indices
     new_group_num <- min(group_pair[1], group_pair[2])
     removed_group_num <- max(group_pair[1], group_pair[2])
     
-    # Update signs
+    # Update signs - to understand what it does, see Dr. Shah's website
     if (switch_signs) {
+      # Note: redefining rowMeans is actually faster than using the
+      # original function on a non-coerced matrix
       group1_mean <- rowMeans2(x[, group1])
       group2_mean <- rowMeans2(x[, group2])
       x[, group2] <- x[, group2] * sign(sum(group1_mean * group2_mean))
@@ -46,11 +55,11 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
       print("New max_group_size")
       print(max_group_size)
     }
-    distinct_groups <- distinct_groups[-which(distinct_groups == removed_group_num)]
+    distinct_groups <- distinct_groups[distinct_groups != removed_group_num]
     
     # Update Sigma
     new_group_x <- x[, new_group_indices]
-    other_groups <- distinct_groups[-which(distinct_groups == new_group_num)]
+    other_groups <- distinct_groups[distinct_groups != new_group_num]
     for (other_group in other_groups) {
       other_group_indices <- cur_groups == other_group
       cur_cor <- cancor(x[, other_group_indices], new_group_x)$cor[1]
