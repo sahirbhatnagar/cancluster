@@ -58,11 +58,12 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
     distinct_groups <- distinct_groups[distinct_groups != removed_group_num]
     
     # Update Sigma
-    new_group_x <- x[, new_group_indices]
+    new_group_x <- x[, new_group_indices, drop=FALSE]
     other_groups <- distinct_groups[distinct_groups != new_group_num]
     for (other_group in other_groups) {
       other_group_indices <- cur_groups == other_group
-      cur_cor <- cancor(x[, other_group_indices], new_group_x)$cor[1]
+      # cur_cor <- cancor(x[, other_group_indices], new_group_x)$cor[1]
+      cur_cor <- cancor2(x[, other_group_indices, drop=FALSE], new_group_x)$cor[1]
       Sigma[other_group_indices, new_group_indices] <- cur_cor
       Sigma[new_group_indices, other_group_indices] <- cur_cor
     }
@@ -74,7 +75,8 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
     group_pair <- c(cur_groups[which_cor_max[1, 1]], cur_groups[which_cor_max[1, 2]])
     
     # Update groups, cors, iter
-    if ((max_group_size >= min_np) || iter >= max_iter) break
+    # if ((max_group_size >= min_np) || iter >= max_iter) break
+    if (iter >= max_iter) break
     groups[iter, ] <- cur_groups
     cors[iter] <- cor_max
   }
@@ -91,4 +93,21 @@ rowMeans2 <- function(x, ...) {
   } else {
     return(rowMeans(x, ...))
   }
+}
+
+cancor2 <- function (x, y) {
+  if ((nr <- nrow(x)) != nrow(y)) 
+    stop("unequal number of rows in 'cancor'")
+  
+  qx <- qr(x)
+  qy <- qr(y)
+  dx <- qx$rank
+  if (!dx) 
+    stop("'x' has rank 0")
+  dy <- qy$rank
+  if (!dy) 
+    stop("'y' has rank 0")
+  z <- svd(qr.qty(qx, qr.qy(qy, diag(1, nr, dy)))[1L:dx, , 
+                                                  drop = FALSE], 1, 1)
+  list(cor = z$d)
 }
