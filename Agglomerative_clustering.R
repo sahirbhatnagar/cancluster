@@ -43,8 +43,8 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
     if (switch_signs) {
       # Note: redefining rowMeans is actually faster than using the
       # original function on a non-coerced matrix
-      group1_mean <- rowMeans2(x[, group1])
-      group2_mean <- rowMeans2(x[, group2])
+      group1_mean <- rowMeans(x[, group1, drop = FALSE])
+      group2_mean <- rowMeans(x[, group2, drop = FALSE])
       x[, group2] <- x[, group2] * sign(sum(group1_mean * group2_mean))
     }
     # Update cur_groups, max_group_size, distinct_groups
@@ -63,7 +63,7 @@ clustering <- function(x, switch_signs = TRUE, normalise = TRUE, verbose = FALSE
     for (other_group in other_groups) {
       other_group_indices <- cur_groups == other_group
       # cur_cor <- cancor(x[, other_group_indices], new_group_x)$cor[1]
-      cur_cor <- cancor2(x[, other_group_indices, drop=FALSE], new_group_x)$cor[1]
+      cur_cor <- cancor3(x[, other_group_indices, drop=FALSE], new_group_x)[1]
       Sigma[other_group_indices, new_group_indices] <- cur_cor
       Sigma[new_group_indices, other_group_indices] <- cur_cor
     }
@@ -110,4 +110,9 @@ cancor2 <- function (x, y) {
   z <- svd(qr.qty(qx, qr.qy(qy, diag(1, nr, dy)))[1L:dx, , 
                                                   drop = FALSE], 1, 1)
   list(cor = z$d)
+}
+require(fscca)
+cancor3 <- function(x, y) {
+  res <- nipals(x, y)
+  res$rho
 }
